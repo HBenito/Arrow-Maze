@@ -262,8 +262,16 @@ namespace Arrow_Maze_Solver
                 maze[foundLocation.Row, foundLocation.Column].Answer = maze[coordinates.Row, coordinates.Column].Answer + 1;
         }
 
-        void SequenceBetweenAnswers(Coordinates coordinates, List<Coordinates> sequence, int distacne, int possibilities, int possition, bool endReached, bool succes)
+        RecursiveSequence SequenceBetweenAnswers(RecursiveSequence recursiveSequence)
         {
+            if(recursiveSequence.endReached && recursiveSequence.succes && recursiveSequence.sequence.Count == recursiveSequence.distance - 1 && recursiveSequence.possibilities == 1)
+            {
+                for (var i = 0; i < recursiveSequence.distance; i++)
+                {
+                    maze[recursiveSequence.sequence[i].Row, recursiveSequence.sequence[i].Column].Answer = maze[recursiveSequence.coordinates.Row, recursiveSequence.coordinates.Column].Answer + i + 1;
+                }
+                return null; ;
+            }
 
         }
     }

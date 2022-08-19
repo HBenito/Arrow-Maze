@@ -10,5 +10,6 @@ namespace Arrow_Maze_Solver
     {
         public int Row { get; set; }
         public int Column { get; set; }
+        public bool EndOfDirection { get; set; }
     }
 }

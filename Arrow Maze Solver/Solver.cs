@@ -11,63 +11,96 @@ namespace Arrow_Maze_Solver
 {
     public class Solver
     {
-        //public int hits = 1;
+        public int hits = 1;
         public Value[,] maze = new Value[8, 8];
 
         public Coordinates FollowDirection(Coordinates coordinates, ArrowDirection direction)
         {
             var newRow = coordinates.Row;
             var newCol = coordinates.Column;
+            var endOfDirection = false;
             //Console.WriteLine($"FollowDirection is hit: {hits} times");
             //hits++;
             switch (direction)
             {
                 case ArrowDirection.D:
                     if (coordinates.Row < 7)
+                    {
                         newRow = coordinates.Row + 1;
-                    return new Coordinates { Row = newRow, Column = newCol};
+                    }
+                    if (newRow == 7)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection};
                 case ArrowDirection.U:
                     if (coordinates.Row > 0)
+                    {
                         newRow = coordinates.Row - 1;
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    }
+                    if (newRow == 0)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.L:
                     if (coordinates.Column > 0)
+                    {
                         newCol = coordinates.Column - 1;
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    }
+                    if (newCol == 0)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.R:
                     if (coordinates.Column < 7)
+                    {
                         newCol = coordinates.Column + 1;
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    }
+                    if (newCol == 7)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.DL:
                     if (coordinates.Row < 7 && coordinates.Column > 0)
                     {
                         newRow = coordinates.Row + 1;
                         newCol = coordinates.Column - 1;
                     }
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    if (newRow == 7 || newCol == 0)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.DR:
                     if (coordinates.Row < 7 && coordinates.Column < 7)
                     {
                         newRow = coordinates.Row + 1;
                         newCol = coordinates.Column + 1;
                     }
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    if (newRow == 7 || newCol == 7)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.UL:
                     if (coordinates.Row > 0 && coordinates.Column > 0)
                     {
                         newRow = coordinates.Row - 1;
                         newCol = coordinates.Column - 1;
                     }
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    if (newRow == 0 || newCol == 0)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.UR:
                     if (coordinates.Row > 0 && coordinates.Column < 7)
                     {
                         newRow = coordinates.Row - 1;
                         newCol = coordinates.Column + 1;
                     }
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    if (newRow == 0 || newCol == 7)
+                        endOfDirection = true;
+
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.Empty:
-                    return new Coordinates { Row = newRow, Column = newCol };
+                    return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = true };
                 default: return new Coordinates();
             }
         }
@@ -214,7 +247,21 @@ namespace Arrow_Maze_Solver
                         coordinates.Row = location.Row;
                     }
                 }
-                FindPossibleSequences(coordinates, distances[i].Value);
+                //FindPossibleSequences(coordinates, distances[i].Value);
+                SequenceBetweenAnswers(new RecursiveSequence
+                {
+                    FinalAnswer = maze[coordinates.Row, coordinates.Column].Answer + distances[i].Value,
+                    CurrentSequence = new List<Coordinates>(),
+                    Distance = distances[i].Value,
+                    EndReached = false,
+                    First = true,
+                    Location = coordinates,
+                    Possibilities = 0,
+                    Possition = 0,
+                    Sequence = new List<Coordinates>(),
+                    Succes = false
+                });
+                Console.WriteLine("out of recursion");
             }
         }
 
@@ -264,15 +311,68 @@ namespace Arrow_Maze_Solver
 
         RecursiveSequence SequenceBetweenAnswers(RecursiveSequence recursiveSequence)
         {
-            if(recursiveSequence.endReached && recursiveSequence.succes && recursiveSequence.sequence.Count == recursiveSequence.distance - 1 && recursiveSequence.possibilities == 1)
+            var endOfDirection = false;
+            var location = recursiveSequence.Location;
+            if (location.EndOfDirection == true)
+                return recursiveSequence;
+
+            while (!endOfDirection)
             {
-                for (var i = 0; i < recursiveSequence.distance; i++)
+                //foreach (var answer in recursiveSequence.CurrentSequence)
+                //{
+                //    Console.Write($"{answer.Row}, {answer.Column} - ");
+                //}
+                //Console.WriteLine("|");
+                location = FollowDirection(location, maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Direction);
+
+                if (location.EndOfDirection == true)
+                    endOfDirection = true;
+
+                if (maze[location.Row, location.Column].Answer != 0 || recursiveSequence.CurrentSequence.Any(x => x.Row == location.Row && x.Column == location.Column))
+                    continue;
+
+                if (recursiveSequence.Distance == 0 && maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer == recursiveSequence.FinalAnswer)
                 {
-                    maze[recursiveSequence.sequence[i].Row, recursiveSequence.sequence[i].Column].Answer = maze[recursiveSequence.coordinates.Row, recursiveSequence.coordinates.Column].Answer + i + 1;
+                    recursiveSequence.Succes = true;
+                    recursiveSequence.Possibilities++;
+                    recursiveSequence.Sequence = recursiveSequence.CurrentSequence;
+                    //if (recursiveSequence.Sequence.Any())
+                    //    recursiveSequence.Sequence.RemoveAt(recursiveSequence.Sequence.Count - 1);
+
+                    return recursiveSequence;
+                }
+
+                if (recursiveSequence.Distance == 0 && maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer != recursiveSequence.FinalAnswer && location.EndOfDirection && !recursiveSequence.First)
+                {
+                    return recursiveSequence;
+                }
+
+                var recursion = recursiveSequence;
+                recursion.CurrentSequence.Add(location);
+                recursion.First = false;
+                recursion.Location = location;
+                recursion.Distance--;
+                recursion = SequenceBetweenAnswers(recursion);
+
+                recursiveSequence.Possibilities = recursion.Possibilities;
+                recursiveSequence.Sequence = recursion.Sequence;
+                recursiveSequence.Succes = recursion.Succes;
+
+                if (endOfDirection)
+                    return recursiveSequence;
+            }
+
+
+            if(recursiveSequence.Succes && recursiveSequence.Sequence.Count == recursiveSequence.Distance - 1 && recursiveSequence.Possibilities == 1 && recursiveSequence.First)
+            {
+                for (var i = 0; i < recursiveSequence.Distance; i++)
+                {
+                    maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column].Answer = maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer + i + 1;
                 }
                 return null; ;
             }
 
+            return recursiveSequence;
         }
     }
 }

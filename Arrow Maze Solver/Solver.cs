@@ -14,6 +14,7 @@ namespace Arrow_Maze_Solver
     {
         public int hits = 1;
         public Value[,] maze = new Value[8, 8];
+        public List<KeyValuePair<Value, Value>> matches = new List<KeyValuePair<Value, Value>>();
 
         public Coordinates FollowDirection(Coordinates coordinates, ArrowDirection direction)
         {
@@ -102,7 +103,8 @@ namespace Arrow_Maze_Solver
                     return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = endOfDirection };
                 case ArrowDirection.Empty:
                     return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = true };
-                default: return new Coordinates();
+                default: return new Coordinates { Row = newRow, Column = newCol, EndOfDirection = true };
+
             }
         }
 
@@ -116,6 +118,8 @@ namespace Arrow_Maze_Solver
                 var currentanswerAmount = CountAnswers();
                 var newanswerAmount = 0;
                 var noNewNumbers = false;
+
+                MatchLocations();
                 
                 //Console.WriteLine(currentanswerAmount);
                 while (!noNewNumbers)
@@ -377,6 +381,30 @@ namespace Arrow_Maze_Solver
             }
 
             return recursiveSequence;
+        }
+
+        void MatchLocations()
+        {
+            foreach(var location in maze)
+            {
+                var nextLocation = FollowDirection(new Coordinates { Column = location.Col, Row = location.Row }, location.Direction);
+                if (maze[nextLocation.Row, nextLocation.Column] == location)
+                    continue;
+
+                if (nextLocation.EndOfDirection && !matches.Any(x => x.Key.Row == location.Row && x.Key.Col == location.Col))
+                {
+                    matches.Add(new KeyValuePair<Value, Value>(location, maze[nextLocation.Row, nextLocation.Column]));
+                }
+            }
+
+            foreach (var match in matches)
+            {
+                if (match.Key.Answer != 0)
+                    match.Value.Answer = match.Key.Answer + 1;
+
+                if (match.Value.Answer != 0)
+                    match.Key.Answer = match.Value.Answer - 1;
+            }
         }
     }
 }

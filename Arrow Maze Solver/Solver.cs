@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 using Arrow_Maze_Solver;
@@ -248,11 +249,12 @@ namespace Arrow_Maze_Solver
                     }
                 }
                 //FindPossibleSequences(coordinates, distances[i].Value);
+                //Console.WriteLine(maze[coordinates.Row, coordinates.Column].Answer + distances[i].Value);
                 SequenceBetweenAnswers(new RecursiveSequence
                 {
                     FinalAnswer = maze[coordinates.Row, coordinates.Column].Answer + distances[i].Value,
                     CurrentSequence = new List<Coordinates>(),
-                    Distance = distances[i].Value,
+                    Distance = distances[i].Value - 1,
                     EndReached = false,
                     First = true,
                     Location = coordinates,
@@ -311,10 +313,9 @@ namespace Arrow_Maze_Solver
 
         RecursiveSequence SequenceBetweenAnswers(RecursiveSequence recursiveSequence)
         {
+            //Console.WriteLine(recursiveSequence.Distance + ": " + recursiveSequence.Location.Column + ", " + recursiveSequence.Location.Row);
             var endOfDirection = false;
             var location = recursiveSequence.Location;
-            if (location.EndOfDirection == true)
-                return recursiveSequence;
 
             while (!endOfDirection)
             {
@@ -328,10 +329,7 @@ namespace Arrow_Maze_Solver
                 if (location.EndOfDirection == true)
                     endOfDirection = true;
 
-                if (maze[location.Row, location.Column].Answer != 0 || recursiveSequence.CurrentSequence.Any(x => x.Row == location.Row && x.Column == location.Column))
-                    continue;
-
-                if (recursiveSequence.Distance == 0 && maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer == recursiveSequence.FinalAnswer)
+                if (recursiveSequence.Distance == 0 && maze[location.Row, location.Column].Answer == recursiveSequence.FinalAnswer)
                 {
                     recursiveSequence.Succes = true;
                     recursiveSequence.Possibilities++;
@@ -347,23 +345,29 @@ namespace Arrow_Maze_Solver
                     return recursiveSequence;
                 }
 
-                var recursion = recursiveSequence;
-                recursion.CurrentSequence.Add(location);
-                recursion.First = false;
-                recursion.Location = location;
-                recursion.Distance--;
-                recursion = SequenceBetweenAnswers(recursion);
+                if (maze[location.Row, location.Column].Answer != 0 || recursiveSequence.CurrentSequence.Any(x => x.Row == location.Row && x.Column == location.Column))
+                    continue;
 
-                recursiveSequence.Possibilities = recursion.Possibilities;
-                recursiveSequence.Sequence = recursion.Sequence;
-                recursiveSequence.Succes = recursion.Succes;
+                if (recursiveSequence.Distance != 0)
+                {
+                    var recursion = recursiveSequence.DeepClone();
+                    recursion.CurrentSequence.Add(location);
+                    recursion.First = false;
+                    recursion.Location = location;
+                    recursion.Distance--;
+                    recursion = SequenceBetweenAnswers(recursion);
+
+                    recursiveSequence.Possibilities = recursion.Possibilities;
+                    recursiveSequence.Sequence = recursion.Sequence;
+                    recursiveSequence.Succes = recursion.Succes;
+                }
 
                 if (endOfDirection)
-                    return recursiveSequence;
+                    continue;
             }
 
 
-            if(recursiveSequence.Succes && recursiveSequence.Sequence.Count == recursiveSequence.Distance - 1 && recursiveSequence.Possibilities == 1 && recursiveSequence.First)
+            if(recursiveSequence.Succes && recursiveSequence.Sequence.Count == recursiveSequence.Distance && recursiveSequence.Possibilities == 1 && recursiveSequence.First)
             {
                 for (var i = 0; i < recursiveSequence.Distance; i++)
                 {

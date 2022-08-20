@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arrow_Maze_Solver
 {
+    [Serializable]
     public class Coordinates
     {
         public int Row { get; set; }

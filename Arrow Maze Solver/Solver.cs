@@ -149,11 +149,21 @@ namespace Arrow_Maze_Solver
                     else currentanswerAmount = newanswerAmount;
                     //Console.WriteLine($"found answers: {newanswerAmount}");
                 }
-                solved = false;
+                if (CountAnswers() == 64)
+                    solved = true;
             };
 
-            //Console.WriteLine(JsonConvert.SerializeObject(maze));
-            return null;
+            for (int row = 0; row < 8; row++)
+            {
+                for (int col = 0; col < 8; col++)
+                {
+                    Console.Write($"\"{maze[row, col].Answer}{maze[row, col].Direction}\", ");
+                }
+                Console.WriteLine();
+            }
+
+                    //Console.WriteLine(JsonConvert.SerializeObject(maze));
+                    return null;
         }
 
         int CountAnswers()
@@ -379,7 +389,15 @@ namespace Arrow_Maze_Solver
             {
                 for (var i = 0; i < recursiveSequence.Distance; i++)
                 {
-                    maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column].Answer = maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer + i + 1;
+                    maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column].Answer = maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer + 1;
+                    if (i > 0)
+                    {
+                        matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Sequence[i - 1].Row, recursiveSequence.Sequence[i - 1].Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
+                    }
+                    else if (i == 0)
+                    {
+                        matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
+                    }
                 }
                 return null; ;
             }

@@ -12,6 +12,7 @@ namespace Arrow_Maze_Solver
         public Coordinates Location { get; set; }
         public List<Coordinates> Sequence { get; set; }
         public List<Coordinates> CurrentSequence { get; set; } = new List<Coordinates>();
+        public List<Coordinates> PossibleLastLocations { get; set; } = new List<Coordinates>();
         public int FinalAnswer { get; set; }
         public int Distance { get; set; }
         public int Possibilities { get; set; }

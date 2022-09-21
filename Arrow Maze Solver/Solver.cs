@@ -108,33 +108,39 @@ namespace Arrow_Maze_Solver
             }
         }
 
+        int iteration = 0;
+
         public string Solve()
         {
             //Console.WriteLine(JsonConvert.SerializeObject(maze));
-
+            //matches.Add(new KeyValuePair<Value, Value>(maze[0, 4], maze[0, 3]));
             var solved = false;
             while (!solved)
             {
+                iteration++;
                 var currentanswerAmount = CountAnswers();
                 var newanswerAmount = 0;
                 var noNewNumbers = false;
 
                 MatchLocations();
+                Console.WriteLine($"Locations matched {iteration}: ");
+                PrintMatches();
                 
                 //Console.WriteLine(currentanswerAmount);
-                while (!noNewNumbers)
-                {
-                    CheckToWalls();
-                    newanswerAmount = CountAnswers();
+                //while (!noNewNumbers)
+                //{
+                //    CheckToWalls();
+                //    newanswerAmount = CountAnswers();
                     
-                    if (currentanswerAmount == newanswerAmount)
-                        noNewNumbers = true;
-                    else currentanswerAmount = newanswerAmount;
-                    //Console.WriteLine($"found answers: {newanswerAmount}");
-                }
+                //    if (currentanswerAmount == newanswerAmount)
+                //        noNewNumbers = true;
+                //    else currentanswerAmount = newanswerAmount;
+                //    //Console.WriteLine($"found answers: {newanswerAmount}");
+                //}
+                //Console.WriteLine($"Checked to walls {iteration}: ");
+                //PrintMatches();
 
-
-                Console.WriteLine("found " + CountAnswers());
+                //Console.WriteLine("found " + CountAnswers());
 
                 noNewNumbers = false;
                 currentanswerAmount = CountAnswers();
@@ -147,23 +153,30 @@ namespace Arrow_Maze_Solver
                     if (currentanswerAmount == newanswerAmount)
                         noNewNumbers = true;
                     else currentanswerAmount = newanswerAmount;
-                    //Console.WriteLine($"found answers: {newanswerAmount}");
                 }
+                Console.WriteLine($"Solved between numbers {iteration}: ");
+                PrintMatches();
+
+                ReverseFind();
+                Console.WriteLine($"ReverseFind {iteration}: ");
+                PrintMatches();
+
+
                 if (CountAnswers() == 64)
                     solved = true;
+
+                Console.WriteLine($"Answers: {CountAnswers()}");
+                Console.WriteLine($"matches: {matches.Count()}");
+
+                PrintUnmatchedAnswers();
+
+                PrintMaze();
             };
 
-            for (int row = 0; row < 8; row++)
-            {
-                for (int col = 0; col < 8; col++)
-                {
-                    Console.Write($"\"{maze[row, col].Answer}{maze[row, col].Direction}\", ");
-                }
-                Console.WriteLine();
-            }
-
-                    //Console.WriteLine(JsonConvert.SerializeObject(maze));
-                    return null;
+            //Console.WriteLine(JsonConvert.SerializeObject(maze));
+            Console.WriteLine("Complete Solve:");
+            PrintMaze();
+            return null;
         }
 
         int CountAnswers()
@@ -219,7 +232,15 @@ namespace Arrow_Maze_Solver
 
                         if (possibilities == 1)
                         {
-                            maze[possiblePosition.Row, possiblePosition.Column].Answer = maze[row, col].Answer++;
+                            var amount = from Value value in maze.Cast<Value>()
+                                         where value.Answer == maze[possiblePosition.Row, possiblePosition.Column].Answer
+                                         select value;
+
+                            if(amount.Count() == 0)
+                            {
+                                maze[possiblePosition.Row, possiblePosition.Column].Answer = maze[row, col].Answer++;
+                                matches.Add(new KeyValuePair<Value, Value>(maze[row, col], maze[possiblePosition.Row, possiblePosition.Column]));
+                            }
                             //Console.WriteLine($"newfound answer: {maze[row, col].Answer++}");
                         }
                     }
@@ -277,7 +298,7 @@ namespace Arrow_Maze_Solver
                     Sequence = new List<Coordinates>(),
                     Succes = false
                 });
-                Console.WriteLine("out of recursion");
+                //Console.WriteLine("out of recursion");
             }
         }
 
@@ -338,13 +359,24 @@ namespace Arrow_Maze_Solver
                 //    Console.Write($"{answer.Row}, {answer.Column} - ");
                 //}
                 //Console.WriteLine("|");
+                var cor = new Coordinates { Column = location.Column, Row = location.Row };
                 location = FollowDirection(location, maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Direction);
 
                 if (location.EndOfDirection == true)
                     endOfDirection = true;
 
+                if(matches.Any(x => x.Value.Col == location.Column && x.Value.Row == location.Row))
+                {
+                    var match = (matches.Where(x => x.Value.Col == location.Column && x.Value.Row == location.Row)).First();
+                    if ((match.Value.Col == location.Column && match.Value.Row == location.Row) && (match.Key.Col != cor.Column || match.Key.Row != cor.Row))
+                        continue;
+                }
+
                 if (recursiveSequence.Distance == 0 && maze[location.Row, location.Column].Answer == recursiveSequence.FinalAnswer)
                 {
+                    if (!recursiveSequence.PossibleLastLocations.Any(x => x.Column == recursiveSequence.Location.Column && x.Row == recursiveSequence.Location.Row))
+                        recursiveSequence.PossibleLastLocations.Add(recursiveSequence.Location);
+
                     recursiveSequence.Succes = true;
                     recursiveSequence.Possibilities++;
                     recursiveSequence.Sequence = recursiveSequence.CurrentSequence;
@@ -359,9 +391,9 @@ namespace Arrow_Maze_Solver
                     return recursiveSequence;
                 }
 
-                if (matches.Select(x => x.Value).Any(x => x.Col == location.Column && x.Row == location.Row) &&
-                    matches.Select(x => x.Key).Any(x => x.Col == recursiveSequence.Location.Column && x.Row == recursiveSequence.Location.Row))
-                    continue;
+                //if (matches.Select(x => x.Value).Any(x => x.Col == location.Column && x.Row == location.Row) &&
+                //    matches.Select(x => x.Key).Any(x => x.Col == recursiveSequence.Location.Column && x.Row == recursiveSequence.Location.Row))
+                //    continue;
 
                 if (maze[location.Row, location.Column].Answer != 0 || recursiveSequence.CurrentSequence.Any(x => x.Row == location.Row && x.Column == location.Column))
                     continue;
@@ -378,6 +410,7 @@ namespace Arrow_Maze_Solver
                     recursiveSequence.Possibilities = recursion.Possibilities;
                     recursiveSequence.Sequence = recursion.Sequence;
                     recursiveSequence.Succes = recursion.Succes;
+                    recursiveSequence.PossibleLastLocations = recursion.PossibleLastLocations;
                 }
 
                 if (endOfDirection)
@@ -389,17 +422,35 @@ namespace Arrow_Maze_Solver
             {
                 for (var i = 0; i < recursiveSequence.Distance; i++)
                 {
-                    maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column].Answer = maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer + 1;
+                    maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column].Answer = maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column].Answer + i + 1;
                     if (i > 0)
                     {
-                        matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Sequence[i - 1].Row, recursiveSequence.Sequence[i - 1].Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
+                        if (!matches.Any(x => x.Key.Col == recursiveSequence.Sequence[i - 1].Column && x.Key.Row == recursiveSequence.Sequence[i - 1].Row))
+                            matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Sequence[i - 1].Row, recursiveSequence.Sequence[i - 1].Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
                     }
                     else if (i == 0)
                     {
-                        matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
+                        if (!matches.Any(x => x.Key.Col == recursiveSequence.Location.Column && x.Key.Row == recursiveSequence.Location.Row))
+                            matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.Location.Row, recursiveSequence.Location.Column], maze[recursiveSequence.Sequence[i].Row, recursiveSequence.Sequence[i].Column]));
                     }
                 }
-                return null; ;
+                return null;
+            }
+
+            if (recursiveSequence.Succes && recursiveSequence.Sequence.Count == recursiveSequence.Distance && recursiveSequence.Possibilities > 1 && recursiveSequence.First && recursiveSequence.PossibleLastLocations.Count == 1)
+            {
+                if (!matches.Any(x => x.Key.Col == recursiveSequence.PossibleLastLocations[0].Column && x.Key.Row == recursiveSequence.PossibleLastLocations[0].Row))
+                {
+                    var endLocation = (from Value value in maze.Cast<Value>()
+                                where value.Answer == recursiveSequence.FinalAnswer
+                                select value).FirstOrDefault();
+
+                    if(endLocation != null)
+                    {
+                        maze[recursiveSequence.PossibleLastLocations[0].Row, recursiveSequence.PossibleLastLocations[0].Column].Answer = recursiveSequence.FinalAnswer - 1;
+                        matches.Add(new KeyValuePair<Value, Value>(maze[recursiveSequence.PossibleLastLocations[0].Row, recursiveSequence.PossibleLastLocations[0].Column], endLocation));
+                    }
+                }
             }
 
             return recursiveSequence;
@@ -411,6 +462,20 @@ namespace Arrow_Maze_Solver
             {
                 if (matches.Any(x => x.Key.Col == location.Col && x.Key.Row == location.Row))
                     continue;
+
+                if (location.Answer != 0)
+                {
+                    var next = (from Value value in maze.Cast<Value>()
+                                where value.Answer == location.Answer + 1
+                                select value).FirstOrDefault();
+
+                    if(next != null)
+                    {
+                        matches.Add(new KeyValuePair<Value, Value>(location, next));
+                        continue;
+                    }
+
+                }
 
                 var previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
                 var sequence = new List<Coordinates>();
@@ -425,30 +490,18 @@ namespace Arrow_Maze_Solver
                     if (nextLocation.Row == previousLocation.Row && nextLocation.Column == previousLocation.Column)
                         continue;
 
-                    previousLocation = nextLocation;
+                    if (maze[nextLocation.Row, nextLocation.Column].Answer == 1)
+                        continue;
 
-                    sequence.Add(nextLocation);
+                    previousLocation.Row = nextLocation.Row;
+                    previousLocation.Column = nextLocation.Column;
+
+                    if (!matches.Any(x => x.Value.Col == nextLocation.Column && x.Value.Row == nextLocation.Row))
+                        sequence.Add(nextLocation);
                 }
 
-                if (sequence.Count == 0)
-                    continue;
-
-                var possibleMatches = 0;
-
-                foreach (var coordinate in sequence)
-                {
-                    if (!matches.Any(x => x.Value.Col == coordinate.Column && x.Value.Row == coordinate.Row))
-                        possibleMatches++;
-                }
-
-                if (possibleMatches == 1)
-                {
-                    foreach (var coordinate in sequence)
-                    {
-                        if (!matches.Any(x => x.Value.Col == coordinate.Column && x.Value.Row == coordinate.Row))
-                            matches.Add(new KeyValuePair<Value, Value>(location, maze[coordinate.Row, coordinate.Column]));
-                    }
-                }
+                if (sequence.Count == 1)
+                    matches.Add(new KeyValuePair<Value, Value>(location, maze[sequence[0].Row, sequence[0].Column]));
 
                 //var endLocation = FollowDirection(new Coordinates { Column = location.Col, Row = location.Row }, location.Direction);
                 //if (maze[endLocation.Row, endLocation.Column] == location)
@@ -467,6 +520,305 @@ namespace Arrow_Maze_Solver
 
                 if (match.Value.Answer != 0)
                     match.Key.Answer = match.Value.Answer - 1;
+            }
+        }
+
+        void ReverseFind()
+        {
+            foreach (var location in maze)
+            {
+                var possibleLocations = new List<Value>();
+                if (/*location.Answer == 0 ||*/ location.Answer == 1)
+                    continue;
+
+                if (matches.Any(x => x.Value.Col == location.Col && x.Value.Row == location.Row))
+                    continue;
+
+                var previous = (from Value value in maze.Cast<Value>()
+                             where value.Answer == location.Answer - 1
+                             select value).FirstOrDefault();
+
+                if (previous != null && previous.Answer != 0)
+                {
+                    matches.Add(new KeyValuePair<Value, Value>(previous, maze[location.Row, location.Col]));
+                    continue;
+                }
+
+                var endOfDirection = false;
+
+                var newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                var previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.U);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.D)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.D);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.U)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.L);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.R)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.R);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.L)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.UR);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.DL)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.UL);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.DR)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.DR);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.UL)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                newLocation = new Coordinates { Column = location.Col, Row = location.Row };
+                previousLocation = new Coordinates { Column = location.Col, Row = location.Row };
+
+                endOfDirection = false;
+                while (!endOfDirection)
+                {
+                    newLocation = FollowDirection(new Coordinates { Column = newLocation.Column, Row = newLocation.Row }, ArrowDirection.DL);
+                    if (newLocation.EndOfDirection)
+                        endOfDirection = true;
+
+                    if (maze[newLocation.Row, newLocation.Column].Direction != ArrowDirection.UR)
+                        continue;
+
+                    if ((maze[newLocation.Row, newLocation.Column].Answer != 0 && maze[location.Row, location.Col].Answer != 0) && (maze[location.Row, location.Col].Answer - maze[newLocation.Row, newLocation.Column].Answer != 1))
+                        continue;
+
+                    if (previousLocation.Row == newLocation.Row && previousLocation.Column == newLocation.Column)
+                        continue;
+
+                    if (!matches.Any(x => ((x.Key.Col == newLocation.Column && x.Key.Row == newLocation.Row))))
+                        possibleLocations.Add(maze[newLocation.Row, newLocation.Column]);
+
+                    previousLocation.Row = newLocation.Row;
+                    previousLocation.Column = newLocation.Column;
+                }
+
+                if (possibleLocations.Count == 1)
+                {
+                    //if(maze[location.Row, location.Col].Answer != 0)
+                    //    maze[possibleLocations[0].Row, possibleLocations[0].Col].Answer = location.Answer - 1;
+
+                    matches.Add(new KeyValuePair<Value, Value>(maze[possibleLocations[0].Row, possibleLocations[0].Col], maze[location.Row, location.Col]));
+                }
+            }
+        }
+
+        void PrintMaze()
+        {
+            for (int row = 0; row < 8; row++)
+            {
+                for (int col = 0; col < 8; col++)
+                {
+                    Console.Write($"\"{maze[row, col].Answer}{maze[row, col].Direction}\",   \t");
+                }
+                Console.WriteLine();
+            }
+            Console.WriteLine();
+            PrintMultipleNumbers();
+            Console.WriteLine();
+            Console.WriteLine();
+
+        }
+
+        void PrintMultipleNumbers()
+        {
+            var multiples = 0;
+            var duplicates = 0;
+            for (int i = 1; i <= 64; i++)
+            {
+                var amount = from Value value in maze.Cast<Value>()
+                             where value.Answer == i
+                             select value;
+
+                if (amount.Count() > 1)
+                {
+                    Console.WriteLine($"{i} = {amount.Count()}");
+                    duplicates = duplicates + amount.Count();
+                    multiples++;
+                }
+            }
+            Console.WriteLine($"{multiples} multiples");
+            Console.WriteLine($"{duplicates} duplicates");
+        }
+
+        void PrintMatches()
+        {
+            //matches.Sort((x, y) => (x.Key.Answer.CompareTo(y.Key.Answer)));
+            Console.WriteLine();
+            foreach (var pair in matches)
+            {
+                Console.WriteLine($"match 1: Key = {pair.Key.Row},{pair.Key.Col}: {pair.Key.Answer}, value = {pair.Value.Row},{pair.Value.Col}: {pair.Value.Answer}");
+            }
+        }
+
+        void PrintUnmatchedAnswers()
+        {
+            foreach (var location in maze)
+            {
+                if (location.Answer == 0)
+                    continue;
+                if(!matches.Any(x => (x.Value.Answer == location.Answer) || (x.Key.Answer == location.Answer)))
+                    Console.WriteLine($"{location.Row},{location.Col}: {location.Answer}");
             }
         }
     }
